@@ -2,7 +2,10 @@ import { Router } from "express";
 import {
   createBatchController,
   districtApprovalController,
+  getBatchController,
+  listBatchesController,
   submitBatchController,
+  stageApprovalController,
   uploadCandidatesController,
 } from "./batch.controller.js";
 import { candidateCsvUploadMiddleware } from "./candidate-upload.middleware.js";
@@ -10,8 +13,12 @@ import { candidateCsvUploadMiddleware } from "./candidate-upload.middleware.js";
 const batchRouter = Router();
 
 batchRouter.post("/", createBatchController);
+batchRouter.get("/", listBatchesController);
+batchRouter.get("/:batchId", getBatchController);
 batchRouter.post("/:batchId/candidates/upload", candidateCsvUploadMiddleware, uploadCandidatesController);
 batchRouter.post("/:batchId/submit", submitBatchController);
 batchRouter.post("/:batchId/approvals/district", districtApprovalController);
+batchRouter.post("/:batchId/approvals/quality", stageApprovalController("QUALITY"));
+batchRouter.post("/:batchId/approvals/state", stageApprovalController("STATE"));
 
 export default batchRouter;

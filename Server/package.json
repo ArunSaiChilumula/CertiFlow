@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:demo": "tsx prisma/seed.ts",
-    "test": "npm run build && node --test tests/district-approval.test.mjs"
+    "test": "npm run build && node --test --test-concurrency=1 tests/district-approval.test.mjs tests/stage-approval.test.mjs"
   },
   "keywords": [],
   "author": "",

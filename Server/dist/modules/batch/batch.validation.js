@@ -21,6 +21,10 @@ export function validateCreateBatch(body) {
         }
         data[field] = trimmed;
     }
+    if (values.requiresQualityReview !== undefined && typeof values.requiresQualityReview !== "boolean") {
+        return { success: false, message: "requiresQualityReview must be a boolean when provided" };
+    }
+    data.requiresQualityReview = values.requiresQualityReview === true;
     return { success: true, data };
 }
 export function validateDistrictApproval(body) {
@@ -42,4 +46,7 @@ export function validateDistrictApproval(body) {
         success: true,
         data: { userId: values.userId.trim(), decision: values.decision, comments },
     };
+}
+export function validateStageApproval(body) {
+    return validateDistrictApproval(body);
 }

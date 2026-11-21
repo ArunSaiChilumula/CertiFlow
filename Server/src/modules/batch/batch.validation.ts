@@ -3,6 +3,7 @@ export interface CreateBatchInput {
   courseName: string;
   trainingCentreId: string;
   createdById: string;
+  requiresQualityReview: boolean;
 }
 
 export type DistrictDecision = "APPROVED" | "REJECTED" | "RETURNED";
@@ -13,11 +14,18 @@ export interface DistrictApprovalInput {
   comments: string | null;
 }
 
+export type StageDecision = "APPROVED" | "REJECTED" | "RETURNED";
+export interface StageApprovalInput {
+  userId: string;
+  decision: StageDecision;
+  comments: string | null;
+}
+
 export type ValidationResult =
   | { success: true; data: CreateBatchInput }
   | { success: false; message: string };
 
-const requiredFields: (keyof CreateBatchInput)[] = [
+const requiredFields: ("batchNumber" | "courseName" | "trainingCentreId" | "createdById")[] = [
   "batchNumber",
   "courseName",
   "trainingCentreId",
@@ -44,6 +52,11 @@ export function validateCreateBatch(body: unknown): ValidationResult {
     }
     data[field] = trimmed;
   }
+
+  if (values.requiresQualityReview !== undefined && typeof values.requiresQualityReview !== "boolean") {
+    return { success: false, message: "requiresQualityReview must be a boolean when provided" };
+  }
+  data.requiresQualityReview = values.requiresQualityReview === true;
 
   return { success: true, data };
 }
@@ -75,4 +88,8 @@ export function validateDistrictApproval(body: unknown): DistrictApprovalValidat
     success: true,
     data: { userId: values.userId.trim(), decision: values.decision, comments },
   };
+}
+
+export function validateStageApproval(body: unknown): DistrictApprovalValidationResult {
+  return validateDistrictApproval(body);
 }

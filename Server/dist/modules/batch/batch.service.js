@@ -26,6 +26,82 @@ export class BatchWorkflowError extends Error {
         this.name = "BatchWorkflowError";
     }
 }
+export async function listBatches(filters) {
+    const batches = await prisma.batch.findMany({
+        where: {
+            ...(filters.trainingCentreId ? { trainingCentreId: filters.trainingCentreId } : {}),
+            ...(filters.status ? { status: filters.status } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+            id: true,
+            batchNumber: true,
+            courseName: true,
+            candidateCount: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            submittedAt: true,
+            approvalRound: true,
+        },
+    });
+    if (batches.length === 0)
+        return [];
+    const approvals = await prisma.approval.findMany({
+        where: { batchId: { in: batches.map((batch) => batch.id) }, stage: "DISTRICT", decision: "APPROVED" },
+        select: { batchId: true, round: true, userId: true },
+    });
+    return batches.map((batch) => ({
+        ...batch,
+        districtApprovalCount: new Set(approvals
+            .filter((approval) => approval.batchId === batch.id && approval.round === batch.approvalRound)
+            .map((approval) => approval.userId)).size,
+    }));
+}
+export async function getBatch(batchId) {
+    const batch = await prisma.batch.findUnique({
+        where: { id: batchId },
+        select: {
+            id: true,
+            batchNumber: true,
+            courseName: true,
+            candidateCount: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            submittedAt: true,
+            approvalRound: true,
+            requiresQualityReview: true,
+            candidates: {
+                orderBy: { createdAt: "asc" },
+                select: { id: true, fullName: true, email: true, phone: true, candidateCode: true },
+            },
+        },
+    });
+    if (!batch)
+        throw new BatchServiceError("Batch not found", 404);
+    const approvals = await prisma.approval.findMany({
+        where: { batchId, round: batch.approvalRound },
+        orderBy: { createdAt: "asc" },
+        select: {
+            stage: true,
+            userId: true,
+            decision: true,
+            comments: true,
+            createdAt: true,
+            user: { select: { name: true } },
+        },
+    });
+    const districtApprovalCount = new Set(approvals
+        .filter((approval) => approval.stage === "DISTRICT" && approval.decision === "APPROVED")
+        .map((approval) => approval.userId)).size;
+    return {
+        ...batch,
+        districtApprovals: approvals.filter((approval) => approval.stage === "DISTRICT"),
+        stageApprovals: approvals,
+        districtApprovalCount,
+    };
+}
 function mapWorkflowDatabaseError(error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === "P2002") {
@@ -221,6 +297,103 @@ export async function recordDistrictApproval(batchId, input) {
         mapWorkflowDatabaseError(error);
     }
 }
+export async function recordQualityOrStateApproval(batchId, stage, input) {
+    const expectedStatus = stage === "QUALITY" ? "QUALITY_REVIEW" : "STATE_REVIEW";
+    const expectedRole = stage === "QUALITY" ? "QUALITY_OFFICER" : "STATE_OFFICER";
+    try {
+        return await prisma.$transaction(async (transaction) => {
+            const batch = await transaction.batch.findUnique({
+                where: { id: batchId },
+                select: { id: true, batchNumber: true, status: true, approvalRound: true, createdById: true },
+            });
+            if (!batch)
+                throw new BatchWorkflowError("Batch not found", 404);
+            if (batch.status !== expectedStatus) {
+                throw new BatchWorkflowError(`Batch must be in ${expectedStatus} to receive a ${stage.toLowerCase()} decision`, 409);
+            }
+            const user = await transaction.user.findUnique({ where: { id: input.userId }, select: { id: true, role: true } });
+            if (!user)
+                throw new BatchWorkflowError(`${stage === "QUALITY" ? "Quality" : "State"} officer user not found`, 404);
+            if (user.role !== expectedRole)
+                throw new BatchWorkflowError(`User must have the ${expectedRole} role`, 403);
+            if (batch.createdById === user.id)
+                throw new BatchWorkflowError("A batch creator cannot approve their own batch", 403);
+            await transaction.approval.create({
+                data: {
+                    batchId,
+                    userId: user.id,
+                    stage,
+                    decision: input.decision,
+                    comments: input.comments,
+                    round: batch.approvalRound,
+                },
+            });
+            let status;
+            if (input.decision === "REJECTED")
+                status = "REJECTED";
+            else if (input.decision === "RETURNED")
+                status = "RETURNED";
+            else
+                status = stage === "QUALITY" ? "STATE_REVIEW" : "APPROVED";
+            const now = new Date();
+            const transition = await transaction.batch.updateMany({
+                where: { id: batchId, status: expectedStatus },
+                data: {
+                    status,
+                    ...(status === "REJECTED" ? { rejectionReason: input.comments } : {}),
+                    ...(status === "RETURNED" ? { returnReason: input.comments } : {}),
+                    ...(stage === "STATE" && status === "APPROVED" ? { approvedAt: now } : {}),
+                },
+            });
+            if (transition.count !== 1)
+                throw new BatchWorkflowError("Batch workflow changed during this request; please retry", 409);
+            let certificateCount = 0;
+            if (stage === "STATE" && status === "APPROVED") {
+                const candidates = await transaction.candidate.findMany({ where: { batchId }, select: { id: true } });
+                if (candidates.length === 0)
+                    throw new BatchWorkflowError("Cannot approve a batch without candidates", 409);
+                const existing = await transaction.certificate.findMany({ where: { candidateId: { in: candidates.map((candidate) => candidate.id) } }, select: { candidateId: true } });
+                const existingIds = new Set(existing.map((certificate) => certificate.candidateId));
+                const newCandidates = candidates.filter((candidate) => !existingIds.has(candidate.id));
+                if (newCandidates.length) {
+                    await transaction.certificate.createMany({
+                        data: newCandidates.map((candidate) => ({
+                            batchId,
+                            candidateId: candidate.id,
+                            certificateNumber: `CF-${batch.batchNumber}-${candidate.id}`,
+                        })),
+                    });
+                }
+                certificateCount = candidates.length;
+            }
+            await transaction.auditLog.create({
+                data: {
+                    action: `${stage}_DECISION_RECORDED`,
+                    entity: "Batch",
+                    entityId: batchId,
+                    batchId,
+                    userId: user.id,
+                    details: { stage, decision: input.decision, approvalRound: batch.approvalRound, fromStatus: expectedStatus, toStatus: status, ...(input.comments ? { comments: input.comments } : {}), ...(certificateCount ? { certificateCount } : {}) },
+                },
+            });
+            await transaction.auditLog.create({
+                data: {
+                    action: "BATCH_STAGE_TRANSITIONED",
+                    entity: "Batch",
+                    entityId: batchId,
+                    batchId,
+                    details: { fromStatus: expectedStatus, toStatus: status, fromStage: stage, toStage: stage === "QUALITY" && status === "STATE_REVIEW" ? "STATE" : status, approvalRound: batch.approvalRound, ...(certificateCount ? { certificateCount } : {}) },
+                },
+            });
+            return { batchId, decision: input.decision, status, approvalRound: batch.approvalRound, certificateCount };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }
+    catch (error) {
+        if (error instanceof BatchWorkflowError)
+            throw error;
+        mapWorkflowDatabaseError(error);
+    }
+}
 export async function uploadCandidates(batchId, candidates) {
     try {
         return await prisma.$transaction(async (transaction) => {
@@ -297,6 +470,7 @@ export async function createBatch(input) {
                 trainingCentreId: centre.id,
                 createdById: creator.id,
                 candidateCount: 0,
+                requiresQualityReview: input.requiresQualityReview,
                 status: "DRAFT",
                 approvalRound: 1,
             },

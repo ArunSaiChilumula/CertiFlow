@@ -88,6 +88,8 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .notification-popover-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 9px 12px; border-bottom: 1px solid #eff0f4; color: #313b4e; font-size: 12px; }
 .notification-popover-head span { color: #5c58d9; font-size: 10px; font-weight: 700; }
 .notification-item { display: flex; align-items: flex-start; gap: 9px; padding: 12px 8px; border-bottom: 1px solid #f1f2f5; }
+.notification-batch-item { width: 100%; border-top: 0; border-right: 0; border-left: 0; background: white; text-align: left; cursor: pointer; }
+.notification-batch-item:hover { background: #fafaff; }
 .notification-icon { display: grid; flex: 0 0 auto; place-items: center; width: 30px; height: 30px; border-radius: 9px; }
 .icon-violet { color: #7169d5; background: #f0efff; }
 .icon-green { color: #31a078; background: #eaf8f1; }
@@ -95,6 +97,7 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .notification-item p strong { color: #364155; font-size: 10.5px; }
 .notification-item p small { color: #929aaa; font-size: 9.5px; }
 .notification-item time { color: #a6adba; font-size: 9px; }
+.notification-empty { padding: 14px 9px; margin: 0; color: #929aaa; font-size: 10px; }
 .notification-all { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 11px 4px 6px; border: 0; color: #5955d8; background: transparent; font-size: 10px; font-weight: 700; }
 .notifications-page { max-width: 850px; overflow: hidden; }
 .notification-page-list { padding: 0 18px; }
@@ -115,6 +118,11 @@ h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 5px; color: #222c3e; font-family: Manrope, sans-serif; font-size: 26px; font-weight: 750; letter-spacing: -.85px; }
 .wave { display: inline-block; color: #e9ad55; font-size: 20px; transform: rotate(18deg); }
 .page-subtitle { margin: 0; color: #8b94a4; font-size: 12px; line-height: 1.6; }
+.api-error { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 14px; margin-bottom: 14px; border: 1px solid #f0d9d9; border-radius: 9px; color: #a64f57; background: #fff7f7; font-size: 10px; }
+.api-error button { padding: 5px 9px; border: 1px solid #efdada; border-radius: 6px; color: #9f4b54; background: white; font-size: 9px; font-weight: 700; }
+.loading-banner { display: flex; align-items: center; gap: 8px; padding: 8px 0 13px; color: #8993a3; font-size: 10px; }
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid #d8d8f5; border-top-color: #5b58e8; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 14px; border-radius: 8px; font-size: 11px; font-weight: 700; transition: .15s ease; }
 .button-primary { border: 1px solid var(--primary); color: white; background: var(--primary); box-shadow: 0 3px 7px #5b58e827; }
 .button-primary:hover:not(:disabled) { border-color: var(--primary-dark); background: var(--primary-dark); transform: translateY(-1px); }
@@ -204,6 +212,7 @@ h1 { margin-bottom: 5px; color: #222c3e; font-family: Manrope, sans-serif; font-
 .activity-row p strong { color: #485367; font-weight: 700; }
 .activity-row p button { padding: 0; border: 0; color: #5755be; background: transparent; font-size: inherit; font-weight: 700; }
 .activity-row p small { display: block; margin-top: 3px; color: #a4abb7; font-size: 8px; }
+.activity-empty { padding: 16px 3px; color: #9aa2af; font-size: 9px; }
 .dashboard-tip { display: flex; align-items: center; gap: 10px; padding: 11px 14px; margin-top: 15px; border: 1px solid #eae9fb; border-radius: 9px; background: #fafaff; }
 .dashboard-tip > span { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 auto; border-radius: 8px; color: #746edc; background: #eeedff; }
 .dashboard-tip p { flex: 1; margin: 0; color: #8b92a1; font-size: 9px; }
@@ -240,6 +249,7 @@ h1 { margin-bottom: 5px; color: #222c3e; font-family: Manrope, sans-serif; font-
 .detail-stat .detail-status { display: block; }
 .details-grid { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(265px,.8fr); align-items: start; gap: 15px; }
 .candidate-panel, .workflow-panel { overflow: hidden; }
+.candidate-actions { display: flex; gap: 7px; }
 .candidate-table th { height: 37px; }
 .candidate-table td { height: 57px; padding: 0 12px; border-bottom: 1px solid #f0f1f4; color: #7f8999; font-size: 9px; }
 .candidate-table td:first-child { display: flex; align-items: center; gap: 9px; }
@@ -398,3 +408,55 @@ h1 { margin-bottom: 5px; color: #222c3e; font-family: Manrope, sans-serif; font-
   .notification-popover { position: fixed; top: 55px; right: 11px; width: min(320px,calc(100vw - 22px)); }
   .toast-message { right: 12px; bottom: 78px; }
 }
+
+/* District Officer demo review workflow */
+.role-switcher-wrap { position: relative; }
+.role-switcher-menu { position: absolute; top: 48px; right: 0; z-index: 35; width: 270px; padding: 9px; border: 1px solid #e9ebf1; border-radius: 12px; background: #fff; box-shadow: 0 16px 45px #29314b1c; }
+.role-menu-label { padding: 7px 8px 5px; color: #9aa2b0; font-size: 8px; font-weight: 800; letter-spacing: 1px; }
+.role-menu-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 8px; border: 0; border-radius: 8px; color: #596477; background: white; text-align: left; }
+.role-menu-option:hover, .role-menu-option.selected { color: #504ccd; background: #f5f4ff; }
+.role-menu-option > span:nth-child(2) { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.role-menu-option strong { font-size: 10px; }.role-menu-option small { color: #929aaa; font-size: 9px; }
+.role-option-avatar { display: grid; flex: 0 0 auto; place-items: center; width: 30px; height: 30px; border-radius: 9px; font-size: 9px; font-weight: 800; }
+.centre-role { color: #34755e; background: #e8f6ef; }.officer-role { color: #5d58d9; background: #efeeff; }
+.role-menu-divider { height: 1px; margin: 6px 4px; background: #eff0f4; }
+.district-metrics { margin-bottom: 15px; }
+.district-officer-metric { font-size: 20px; }
+.queue-count { padding: 6px 9px; border-radius: 7px; color: #5b58d9; background: #f0efff; font-size: 9px; font-weight: 700; }
+.district-queue-table { min-width: 850px; }
+.approval-progress { display: inline-flex; align-items: center; gap: 8px; color: #566175; font-size: 10px; }
+.approval-progress-dots { display: inline-flex; gap: 4px; }
+.approval-progress-dots i { width: 8px; height: 8px; border: 1px solid #dfe2ec; border-radius: 50%; background: #fff; }
+.approval-progress-dots i.filled { border-color: #6964e7; background: #6964e7; box-shadow: 0 0 0 2px #efeeff; }
+.review-button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 1px solid #e7e6fb; border-radius: 7px; color: #5753d4; background: #f8f7ff; font-size: 9px; font-weight: 700; }
+.review-button:hover { border-color: #cbc9f7; background: #f0efff; }
+.approval-progress-large { padding: 8px 11px; border: 1px solid #ecebff; border-radius: 8px; background: #fafaff; }
+.district-review-aside { display: flex; flex-direction: column; gap: 13px; }
+.district-approval-panel, .district-decision-panel { overflow: hidden; }
+.district-approval-list { padding: 3px 15px 12px; }
+.district-approval-row { display: flex; align-items: center; gap: 9px; padding: 10px 1px; border-bottom: 1px solid #f0f1f5; }
+.district-approval-row:last-child { border-bottom: 0; }
+.approval-officer-avatar { display: grid; flex: 0 0 auto; place-items: center; width: 31px; height: 31px; border-radius: 50%; color: #5d59d5; background: #efeeff; font-size: 9px; font-weight: 800; }
+.approval-officer-copy { display: flex; flex: 1; flex-direction: column; gap: 4px; }
+.approval-officer-copy strong { color: #4b566a; font-size: 9.5px; }.approval-officer-copy small { color: #9aa2b0; font-size: 8.5px; }
+.no-approvals { padding: 8px 2px; margin: 0; color: #959eac; font-size: 9px; }
+.district-decision-panel .panel-heading { padding-bottom: 11px; }
+.district-comments { padding: 0 15px; margin: 4px 0 12px; }
+.district-comments span small { color: #9ba3af; font-size: 9px; font-weight: 500; }
+.district-comments textarea { width: 100%; resize: vertical; padding: 9px 10px; outline: 0; border: 1px solid #e6e8ef; border-radius: 7px; color: #394255; background: #fff; font: inherit; font-size: 9.5px; }
+.district-comments textarea:focus { border-color: #aaa7f0; box-shadow: 0 0 0 3px #625de712; }
+.district-comments textarea::placeholder { color: #aeb4bf; }
+.district-decision-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 15px 15px; }
+.district-decision-actions .button { min-height: 33px; padding: 0 10px; font-size: 9px; }
+.district-approve { flex: 1; }
+.district-return { color: #967338; background: #fffaf0; border-color: #f1e7cd; }
+.district-reject { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #f1dddd; border-radius: 7px; color: #bb555d; background: #fff7f7; }
+.district-reject:hover { background: #fff0f0; }
+.decision-notice { display: flex; align-items: flex-start; gap: 7px; padding: 11px 13px; border: 1px solid #e4f1e9; border-radius: 8px; color: #718779; background: #f5fbf7; font-size: 9px; line-height: 1.5; }
+.decision-notice svg { flex: 0 0 auto; color: #36a177; }
+.decision-notice strong { color: #4b725d; }
+.approval-subcount { color: #929aaa; font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 500; }
+@media (max-width: 760px) { .role-switcher-menu { position: fixed; top: 57px; right: 10px; width: min(270px,calc(100vw - 20px)); }.district-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.quality-review-option { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; margin: 2px 0 14px; border: 1px solid #ecebff; border-radius: 8px; background: #fafaff; cursor: pointer; }
+.quality-review-option input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: #5b58e8; }
+.quality-review-option span { display: flex; flex-direction: column; gap: 3px; }.quality-review-option strong { color: #536074; font-size: 9.5px; }.quality-review-option small { color: #929aaa; font-size: 8.5px; line-height: 1.4; }

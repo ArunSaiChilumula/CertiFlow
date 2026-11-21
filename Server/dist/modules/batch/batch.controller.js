@@ -1,6 +1,6 @@
-import { BatchServiceError, BatchWorkflowError, CandidateUploadError, createBatch, recordDistrictApproval, submitBatch, uploadCandidates, } from "./batch.service.js";
+import { BatchServiceError, BatchWorkflowError, CandidateUploadError, createBatch, getBatch, listBatches, recordDistrictApproval, recordQualityOrStateApproval, submitBatch, uploadCandidates, } from "./batch.service.js";
 import { parseCandidateCsv } from "./candidate-upload.validation.js";
-import { validateCreateBatch, validateDistrictApproval } from "./batch.validation.js";
+import { validateCreateBatch, validateDistrictApproval, validateStageApproval } from "./batch.validation.js";
 export async function createBatchController(req, res) {
     const validation = validateCreateBatch(req.body);
     if (!validation.success) {
@@ -103,5 +103,69 @@ export async function districtApprovalController(req, res) {
         }
         console.error("District decision failed:", error);
         return res.status(500).json({ success: false, message: "Failed to record district decision" });
+    }
+}
+export function stageApprovalController(stage) {
+    return async (req, res) => {
+        const batchId = getBatchId(req, res);
+        if (!batchId)
+            return;
+        const validation = validateStageApproval(req.body);
+        if (!validation.success)
+            return res.status(400).json({ success: false, message: validation.message });
+        if (stage === "STATE" && validation.data.decision === "RETURNED") {
+            return res.status(400).json({ success: false, message: "State decisions must be APPROVED or REJECTED" });
+        }
+        try {
+            const data = await recordQualityOrStateApproval(batchId, stage, validation.data);
+            const message = stage === "STATE" && data.status === "APPROVED"
+                ? `Final approval recorded and ${data.certificateCount} certificates generated`
+                : `${stage === "QUALITY" ? "Quality" : "State"} decision recorded successfully`;
+            return res.status(200).json({ success: true, message, data });
+        }
+        catch (error) {
+            if (error instanceof BatchWorkflowError)
+                return res.status(error.statusCode).json({ success: false, message: error.message });
+            console.error(`${stage} decision failed:`, error);
+            return res.status(500).json({ success: false, message: `Failed to record ${stage.toLowerCase()} decision` });
+        }
+    };
+}
+export async function listBatchesController(req, res) {
+    const trainingCentreId = req.query.trainingCentreId;
+    const status = req.query.status;
+    const filters = {};
+    if (typeof trainingCentreId === "string" && trainingCentreId.trim()) {
+        filters.trainingCentreId = trainingCentreId.trim();
+    }
+    else if (status === "DISTRICT_REVIEW" || status === "QUALITY_REVIEW" || status === "STATE_REVIEW") {
+        filters.status = status;
+    }
+    else {
+        return res.status(400).json({ success: false, message: "Provide trainingCentreId or a supported review status" });
+    }
+    try {
+        const data = await listBatches(filters);
+        return res.status(200).json({ success: true, data });
+    }
+    catch (error) {
+        console.error("Batch list request failed:", error);
+        return res.status(500).json({ success: false, message: "Failed to load batches" });
+    }
+}
+export async function getBatchController(req, res) {
+    const batchId = getBatchId(req, res);
+    if (!batchId)
+        return;
+    try {
+        const data = await getBatch(batchId);
+        return res.status(200).json({ success: true, data });
+    }
+    catch (error) {
+        if (error instanceof BatchServiceError) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        console.error("Batch details request failed:", error);
+        return res.status(500).json({ success: false, message: "Failed to load batch" });
     }
 }

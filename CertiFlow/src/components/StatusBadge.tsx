@@ -2,6 +2,7 @@ import type { BatchStatus } from '../types'
 
 const labels: Record<BatchStatus, string> = {
   DRAFT: 'Draft',
+  SUBMITTED: 'Submitted',
   DISTRICT_REVIEW: 'District review',
   QUALITY_REVIEW: 'Quality review',
   STATE_REVIEW: 'State review',
@@ -9,6 +10,7 @@ const labels: Record<BatchStatus, string> = {
   ISSUED: 'Issued',
   RETURNED: 'Returned',
   REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
 }
 
 export function StatusBadge({ status }: { status: BatchStatus }) {

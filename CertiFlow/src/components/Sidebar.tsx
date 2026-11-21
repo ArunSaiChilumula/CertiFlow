@@ -5,6 +5,8 @@ interface SidebarProps {
   active: Section
   onNavigate: (section: Section) => void
   onCreate: () => void
+  districtMode: boolean
+  roleLabel?: string
 }
 
 const links: { label: Section; icon: IconName }[] = [
@@ -14,7 +16,7 @@ const links: { label: Section; icon: IconName }[] = [
   { label: 'Notifications', icon: 'bell' },
 ]
 
-export function Sidebar({ active, onNavigate, onCreate }: SidebarProps) {
+export function Sidebar({ active, onNavigate, onCreate, districtMode, roleLabel = 'District Officer' }: SidebarProps) {
   return (
     <aside className="sidebar">
       <button className="brand" onClick={() => onNavigate('Dashboard')} aria-label="CertiFlow dashboard">
@@ -23,8 +25,8 @@ export function Sidebar({ active, onNavigate, onCreate }: SidebarProps) {
       </button>
 
       <div className="workspace-switcher">
-        <span className="workspace-avatar">A</span>
-        <span className="workspace-copy"><strong>Akademi Skills</strong><small>Training centre</small></span>
+        <span className="workspace-avatar">{districtMode ? 'D' : 'A'}</span>
+        <span className="workspace-copy"><strong>{districtMode ? `${roleLabel} Review` : 'Demo Training Centre'}</strong><small>{districtMode ? roleLabel : 'Training centre'}</small></span>
         <Icon name="chevronDown" size={16} className="muted-icon" />
       </div>
 
@@ -34,10 +36,10 @@ export function Sidebar({ active, onNavigate, onCreate }: SidebarProps) {
           <div key={link.label}>
             <button className={`nav-link ${active === link.label ? 'active' : ''}`} onClick={() => onNavigate(link.label)}>
               <Icon name={link.icon} size={19} />
-              <span>{link.label}</span>
+              <span>{districtMode && link.label === 'My Batches' ? 'Review Queue' : link.label}</span>
               {link.label === 'Notifications' && <span className="nav-count">3</span>}
             </button>
-            {link.label === 'My Batches' && <button className="nav-link create-nav-link" onClick={onCreate}><Icon name="plus" size={19} /><span>Create Batch</span></button>}
+            {link.label === 'My Batches' && !districtMode && <button className="nav-link create-nav-link" onClick={onCreate}><Icon name="plus" size={19} /><span>Create Batch</span></button>}
           </div>
         ))}
       </nav>
@@ -55,8 +57,8 @@ export function Sidebar({ active, onNavigate, onCreate }: SidebarProps) {
         <button onClick={() => onNavigate('Settings')}>Visit help centre <Icon name="arrowRight" size={14} /></button>
       </div>
       <div className="sidebar-footer">
-        <span className="footer-avatar">AS</span>
-        <span className="footer-profile"><strong>Ananya Sharma</strong><small>Centre coordinator</small></span>
+        <span className="footer-avatar">DC</span>
+        <span className="footer-profile"><strong>Demo Centre User</strong><small>demo@certiflow.com</small></span>
         <button className="icon-button footer-more" aria-label="Profile options"><Icon name="more" size={19} /></button>
       </div>
     </aside>

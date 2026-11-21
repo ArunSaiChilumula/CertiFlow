@@ -12,7 +12,8 @@ interface BatchTableProps {
 }
 
 function displayDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const date = value.includes('T') ? new Date(value) : new Date(`${value}T12:00:00`)
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export function BatchTable({ batches, onSelect, onViewAll, title = 'Recent batches', description = 'Keep track of your training programmes', compact = false }: BatchTableProps) {
